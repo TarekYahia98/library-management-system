@@ -63,55 +63,32 @@ class BorrowingController {
     try {
       const format = req.query.format || 'csv';
       
-      // Calculate last month's date range
-      const now = new Date();
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-      const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+      const exportData = await borrowingService.getFormattedOverdueBooksExport(format);
       
-      // Get overdue books from last month only
-      const overdueBooks = await borrowingService.getOverdueBooksByDateRange(
-        startOfLastMonth, 
-        endOfLastMonth
-      );
-      
-      if (overdueBooks.length === 0) {
+      if (!exportData) {
         return res.status(404).json({
           success: false,
           message: 'No overdue books found for last month'
         });
       }
       
-      // Format data for export
-      const exportData = overdueBooks.map(book => ({
-        'Book Title': book.Book?.title || 'N/A',
-        'Author': book.Book?.author || 'N/A',
-        'ISBN': book.Book?.isbn || 'N/A',
-        'Borrower Name': book.Borrower?.name || 'N/A',
-        'Borrower Email': book.Borrower?.email || 'N/A',
-        'Checkout Date': new Date(book.checkoutDate).toLocaleDateString(),
-        'Due Date': new Date(book.dueDate).toLocaleDateString(),
-        'Days Overdue': Math.floor((new Date() - new Date(book.dueDate)) / (1000 * 60 * 60 * 24)),
-        'Status': book.status
-      }));
-      
       if (format === 'xlsx') {
         // Export to Excel
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const worksheet = XLSX.utils.json_to_sheet(exportData.data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Overdue Books Last Month');
+        XLSX.utils.book_append_sheet(workbook, worksheet, exportData.sheetName);
         const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
         
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename=overdue_books_${startOfLastMonth.toISOString().split('T')[0]}_to_${endOfLastMonth.toISOString().split('T')[0]}.xlsx`);
+        res.setHeader('Content-Disposition', `attachment; filename=${exportData.filename}.xlsx`);
         return res.send(buffer);
       } else {
         // Export to CSV
         const parser = new Parser();
-        const csv = parser.parse(exportData);
+        const csv = parser.parse(exportData.data);
         
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename=overdue_books_${startOfLastMonth.toISOString().split('T')[0]}_to_${endOfLastMonth.toISOString().split('T')[0]}.csv`);
+        res.setHeader('Content-Disposition', `attachment; filename=${exportData.filename}.csv`);
         return res.send(csv);
       }
     } catch (error) {
@@ -126,58 +103,32 @@ class BorrowingController {
     try {
       const format = req.query.format || 'csv';
       
-      // Calculate last month's date range
-      const now = new Date();
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-      const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+      const exportData = await borrowingService.getFormattedAllBorrowingsExport(format);
       
-      // Get all borrowings from last month
-      const borrowings = await borrowingService.getBorrowingsByDateRange(
-        startOfLastMonth, 
-        endOfLastMonth
-      );
-      
-      if (borrowings.length === 0) {
+      if (!exportData) {
         return res.status(404).json({
           success: false,
           message: 'No borrowing records found for last month'
         });
       }
       
-      // Format data for export
-      const exportData = borrowings.map(borrowing => ({
-        'Book Title': borrowing.Book?.title || 'N/A',
-        'Author': borrowing.Book?.author || 'N/A',
-        'ISBN': borrowing.Book?.isbn || 'N/A',
-        'Borrower Name': borrowing.Borrower?.name || 'N/A',
-        'Borrower Email': borrowing.Borrower?.email || 'N/A',
-        'Checkout Date': new Date(borrowing.checkoutDate).toLocaleDateString(),
-        'Due Date': new Date(borrowing.dueDate).toLocaleDateString(),
-        'Return Date': borrowing.returnDate ? new Date(borrowing.returnDate).toLocaleDateString() : 'Not Returned',
-        'Status': borrowing.status,
-        'Days Borrowed': borrowing.returnDate ? 
-          Math.floor((new Date(borrowing.returnDate) - new Date(borrowing.checkoutDate)) / (1000 * 60 * 60 * 24)) : 
-          Math.floor((new Date() - new Date(borrowing.checkoutDate)) / (1000 * 60 * 60 * 24))
-      }));
-      
       if (format === 'xlsx') {
         // Export to Excel
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const worksheet = XLSX.utils.json_to_sheet(exportData.data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Borrowings Last Month');
+        XLSX.utils.book_append_sheet(workbook, worksheet, exportData.sheetName);
         const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
         
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename=borrowings_${startOfLastMonth.toISOString().split('T')[0]}_to_${endOfLastMonth.toISOString().split('T')[0]}.xlsx`);
+        res.setHeader('Content-Disposition', `attachment; filename=${exportData.filename}.xlsx`);
         return res.send(buffer);
       } else {
         // Export to CSV
         const parser = new Parser();
-        const csv = parser.parse(exportData);
+        const csv = parser.parse(exportData.data);
         
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename=borrowings_${startOfLastMonth.toISOString().split('T')[0]}_to_${endOfLastMonth.toISOString().split('T')[0]}.csv`);
+        res.setHeader('Content-Disposition', `attachment; filename=${exportData.filename}.csv`);
         return res.send(csv);
       }
     } catch (error) {
@@ -199,46 +150,30 @@ class BorrowingController {
         });
       }
       
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      const exportData = await borrowingService.getFormattedCustomReportExport(startDate, endDate, format);
       
-      const borrowings = await borrowingService.getBorrowingsByDateRange(start, end);
-      
-      if (borrowings.length === 0) {
+      if (!exportData) {
         return res.status(404).json({
           success: false,
           message: 'No borrowing records found for the specified date range'
         });
       }
       
-      const exportData = borrowings.map(borrowing => ({
-        'Book Title': borrowing.Book?.title || 'N/A',
-        'Author': borrowing.Book?.author || 'N/A',
-        'ISBN': borrowing.Book?.isbn || 'N/A',
-        'Borrower Name': borrowing.Borrower?.name || 'N/A',
-        'Borrower Email': borrowing.Borrower?.email || 'N/A',
-        'Checkout Date': new Date(borrowing.checkoutDate).toLocaleDateString(),
-        'Due Date': new Date(borrowing.dueDate).toLocaleDateString(),
-        'Return Date': borrowing.returnDate ? new Date(borrowing.returnDate).toLocaleDateString() : 'Not Returned',
-        'Status': borrowing.status
-      }));
-      
       if (format === 'xlsx') {
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const worksheet = XLSX.utils.json_to_sheet(exportData.data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Custom Report');
+        XLSX.utils.book_append_sheet(workbook, worksheet, exportData.sheetName);
         const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
         
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename=custom_report_${startDate}_to_${endDate}.xlsx`);
+        res.setHeader('Content-Disposition', `attachment; filename=${exportData.filename}.xlsx`);
         return res.send(buffer);
       } else {
         const parser = new Parser();
-        const csv = parser.parse(exportData);
+        const csv = parser.parse(exportData.data);
         
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename=custom_report_${startDate}_to_${endDate}.csv`);
+        res.setHeader('Content-Disposition', `attachment; filename=${exportData.filename}.csv`);
         return res.send(csv);
       }
     } catch (error) {

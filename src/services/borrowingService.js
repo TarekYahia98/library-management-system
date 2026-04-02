@@ -132,49 +132,171 @@ class BorrowingService {
       ]
     });
   }
-  async getOverdueBooksByDateRange(startDate, endDate) {
-  return await Borrowing.findAll({
-    where: {
-      status: 'active',
-      dueDate: {
-        [Op.lt]: new Date(), // Overdue (due date before today)
-        [Op.between]: [startDate, endDate] // Within date range
-      }
-    },
-    include: [
-      {
-        model: Book,
-        attributes: ['title', 'author', 'isbn', 'shelfLocation']
-      },
-      {
-        model: Borrower,
-        attributes: ['name', 'email']
-      }
-    ],
-    order: [['dueDate', 'ASC']]
-  });
-}
 
-async getBorrowingsByDateRange(startDate, endDate) {
-  return await Borrowing.findAll({
-    where: {
-      checkoutDate: {
-        [Op.between]: [startDate, endDate]
-      }
-    },
-    include: [
-      {
-        model: Book,
-        attributes: ['title', 'author', 'isbn', 'shelfLocation']
+  async getOverdueBooksByDateRange(startDate, endDate) {
+    return await Borrowing.findAll({
+      where: {
+        status: 'active',
+        dueDate: {
+          [Op.lt]: new Date(), // Overdue (due date before today)
+          [Op.between]: [startDate, endDate] // Within date range
+        }
       },
-      {
-        model: Borrower,
-        attributes: ['name', 'email']
-      }
-    ],
-    order: [['checkoutDate', 'DESC']]
-  });
-}
+      include: [
+        {
+          model: Book,
+          attributes: ['title', 'author', 'isbn', 'shelfLocation']
+        },
+        {
+          model: Borrower,
+          attributes: ['name', 'email']
+        }
+      ],
+      order: [['dueDate', 'ASC']]
+    });
+  }
+
+  async getBorrowingsByDateRange(startDate, endDate) {
+    return await Borrowing.findAll({
+      where: {
+        checkoutDate: {
+          [Op.between]: [startDate, endDate]
+        }
+      },
+      include: [
+        {
+          model: Book,
+          attributes: ['title', 'author', 'isbn', 'shelfLocation']
+        },
+        {
+          model: Borrower,
+          attributes: ['name', 'email']
+        }
+      ],
+      order: [['checkoutDate', 'DESC']]
+    });
+  }
+
+  /**
+   * Get formatted export data for overdue books from last month
+   */
+  async getFormattedOverdueBooksExport(format = 'csv') {
+    // Calculate last month's date range
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+    const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+    
+    // Get overdue books from last month only
+    const overdueBooks = await this.getOverdueBooksByDateRange(
+      startOfLastMonth, 
+      endOfLastMonth
+    );
+    
+    if (overdueBooks.length === 0) {
+      return null;
+    }
+    
+    // Format data for export
+    const exportData = overdueBooks.map(book => ({
+      'Book Title': book.Book?.title || 'N/A',
+      'Author': book.Book?.author || 'N/A',
+      'ISBN': book.Book?.isbn || 'N/A',
+      'Borrower Name': book.Borrower?.name || 'N/A',
+      'Borrower Email': book.Borrower?.email || 'N/A',
+      'Checkout Date': new Date(book.checkoutDate).toLocaleDateString(),
+      'Due Date': new Date(book.dueDate).toLocaleDateString(),
+      'Days Overdue': Math.floor((new Date() - new Date(book.dueDate)) / (1000 * 60 * 60 * 24)),
+      'Status': book.status
+    }));
+    
+    return {
+      data: exportData,
+      filename: `overdue_books_${startOfLastMonth.toISOString().split('T')[0]}_to_${endOfLastMonth.toISOString().split('T')[0]}`,
+      sheetName: 'Overdue Books Last Month'
+    };
+  }
+
+  /**
+   * Get formatted export data for all borrowings from last month
+   */
+  async getFormattedAllBorrowingsExport(format = 'csv') {
+    // Calculate last month's date range
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+    const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+    
+    // Get all borrowings from last month
+    const borrowings = await this.getBorrowingsByDateRange(
+      startOfLastMonth, 
+      endOfLastMonth
+    );
+    
+    if (borrowings.length === 0) {
+      return null;
+    }
+    
+    // Format data for export
+    const exportData = borrowings.map(borrowing => ({
+      'Book Title': borrowing.Book?.title || 'N/A',
+      'Author': borrowing.Book?.author || 'N/A',
+      'ISBN': borrowing.Book?.isbn || 'N/A',
+      'Borrower Name': borrowing.Borrower?.name || 'N/A',
+      'Borrower Email': borrowing.Borrower?.email || 'N/A',
+      'Checkout Date': new Date(borrowing.checkoutDate).toLocaleDateString(),
+      'Due Date': new Date(borrowing.dueDate).toLocaleDateString(),
+      'Return Date': borrowing.returnDate ? new Date(borrowing.returnDate).toLocaleDateString() : 'Not Returned',
+      'Status': borrowing.status,
+      'Days Borrowed': borrowing.returnDate ? 
+        Math.floor((new Date(borrowing.returnDate) - new Date(borrowing.checkoutDate)) / (1000 * 60 * 60 * 24)) : 
+        Math.floor((new Date() - new Date(borrowing.checkoutDate)) / (1000 * 60 * 60 * 24))
+    }));
+    
+    return {
+      data: exportData,
+      filename: `borrowings_${startOfLastMonth.toISOString().split('T')[0]}_to_${endOfLastMonth.toISOString().split('T')[0]}`,
+      sheetName: 'Borrowings Last Month'
+    };
+  }
+
+  /**
+   * Get formatted export data for custom date range report
+   */
+  async getFormattedCustomReportExport(startDate, endDate, format = 'csv') {
+    if (!startDate || !endDate) {
+      throw new Error('startDate and endDate are required');
+    }
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    const borrowings = await this.getBorrowingsByDateRange(start, end);
+    
+    if (borrowings.length === 0) {
+      return null;
+    }
+    
+    // Format data for export
+    const exportData = borrowings.map(borrowing => ({
+      'Book Title': borrowing.Book?.title || 'N/A',
+      'Author': borrowing.Book?.author || 'N/A',
+      'ISBN': borrowing.Book?.isbn || 'N/A',
+      'Borrower Name': borrowing.Borrower?.name || 'N/A',
+      'Borrower Email': borrowing.Borrower?.email || 'N/A',
+      'Checkout Date': new Date(borrowing.checkoutDate).toLocaleDateString(),
+      'Due Date': new Date(borrowing.dueDate).toLocaleDateString(),
+      'Return Date': borrowing.returnDate ? new Date(borrowing.returnDate).toLocaleDateString() : 'Not Returned',
+      'Status': borrowing.status
+    }));
+    
+    return {
+      data: exportData,
+      filename: `custom_report_${startDate}_to_${endDate}`,
+      sheetName: 'Custom Report'
+    };
+  }
 }
 
 module.exports = new BorrowingService();

@@ -154,18 +154,18 @@ curl -X GET "http://localhost:3000/api/borrowings/export/all-last-month?format=x
   --output borrowings_last_month.xlsx
 
 19. Export Custom Date Range Report (Authenticated)
-# Export January 2024 as CSV
-curl -X GET "http://localhost:3000/api/borrowings/export/custom-report?startDate=2024-01-01&endDate=2024-01-31&format=csv" \
+# Export January 2026 as CSV
+curl -X GET "http://localhost:3000/api/borrowings/export/custom-report?startDate=2026-01-01&endDate=2024-01-31&format=csv" \
   -H "x-api-key: my-secure-api-key-12345" \
   --output custom_report_january.csv
 
 # Export as Excel
-curl -X GET "http://localhost:3000/api/borrowings/export/custom-report?startDate=2024-01-01&endDate=2024-01-31&format=xlsx" \
+curl -X GET "http://localhost:3000/api/borrowings/export/custom-report?startDate=2026-01-01&endDate=2024-01-31&format=xlsx" \
   -H "x-api-key: my-secure-api-key-12345" \
   --output custom_report_january.xlsx
 
 # Export last 30 days as Excel
-curl -X GET "http://localhost:3000/api/borrowings/export/custom-report?startDate=2024-03-01&endDate=2024-03-31&format=xlsx" \
+curl -X GET "http://localhost:3000/api/borrowings/export/custom-report?startDate=2026-03-01&endDate=2024-03-31&format=xlsx" \
   -H "x-api-key: my-secure-api-key-12345" \
   --output march_report.xlsx
 

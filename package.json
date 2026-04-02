@@ -8,6 +8,9 @@
     "dev": "nodemon src/app.js",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
     "migrate": "node scripts/migrate.js"
   },
   "dependencies": {
@@ -30,15 +33,21 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.8",
+    "@types/jest": "^30.0.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.4"
   },
   "jest": {
     "testEnvironment": "node",
     "coveragePathIgnorePatterns": [
       "/node_modules/"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/app.js",
+      "!src/config/**",
+      "!src/middleware/errorHandler.js"
     ]
   }
 }
