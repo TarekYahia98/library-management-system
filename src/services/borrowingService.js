@@ -132,6 +132,49 @@ class BorrowingService {
       ]
     });
   }
+  async getOverdueBooksByDateRange(startDate, endDate) {
+  return await Borrowing.findAll({
+    where: {
+      status: 'active',
+      dueDate: {
+        [Op.lt]: new Date(), // Overdue (due date before today)
+        [Op.between]: [startDate, endDate] // Within date range
+      }
+    },
+    include: [
+      {
+        model: Book,
+        attributes: ['title', 'author', 'isbn', 'shelfLocation']
+      },
+      {
+        model: Borrower,
+        attributes: ['name', 'email']
+      }
+    ],
+    order: [['dueDate', 'ASC']]
+  });
+}
+
+async getBorrowingsByDateRange(startDate, endDate) {
+  return await Borrowing.findAll({
+    where: {
+      checkoutDate: {
+        [Op.between]: [startDate, endDate]
+      }
+    },
+    include: [
+      {
+        model: Book,
+        attributes: ['title', 'author', 'isbn', 'shelfLocation']
+      },
+      {
+        model: Borrower,
+        attributes: ['name', 'email']
+      }
+    ],
+    order: [['checkoutDate', 'DESC']]
+  });
+}
 }
 
 module.exports = new BorrowingService();
